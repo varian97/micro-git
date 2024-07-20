@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"micro-git/filesystem"
+	"micro-git/core"
 
 	"github.com/akamensky/argparse"
 )
@@ -35,14 +35,14 @@ func main() {
 	}
 
 	if initCommand.Happened() {
-		err := filesystem.Init()
+		err := core.Init()
 		if err != nil {
 			panic(err)
 		}
 	}
 
 	if hashObjectCommand.Happened() {
-		hexSum, err := filesystem.WriteObject(*hashObjectFileInput, *hashObjectFileType, *hashObjectWriteFlag)
+		hexSum, err := core.HashObject(*hashObjectFileInput, *hashObjectFileType, *hashObjectWriteFlag)
 		if err != nil {
 			panic(err)
 		}

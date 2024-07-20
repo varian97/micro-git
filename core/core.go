@@ -1,4 +1,4 @@
-package filesystem
+package core
 
 import (
 	"crypto/sha1"
@@ -62,7 +62,7 @@ func Init() error {
 	return nil
 }
 
-func WriteObject(path, objectType string, shouldWrite bool) (string, error) {
+func HashObject(path, objectType string, shouldWrite bool) (string, error) {
 	if objectType != BLOB_OBJECT_TYPE && objectType != TAG_OBJECT_TYPE && objectType != COMMIT_OBJECT_TYPE && objectType != TREE_OBJECT_TYPE {
 		err := fmt.Errorf("invalid objectType supplied: %v", objectType)
 		return "", err

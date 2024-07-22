@@ -28,6 +28,20 @@ func main() {
 		Help:     "The file to be hashed",
 	})
 
+	catFileCommand := parser.NewCommand("cat-file", "Provide content or type and size information for repository objects")
+	catFileInput := catFileCommand.StringPositional(&argparse.Options{
+		Required: true,
+		Help:     "The name of the object to show",
+	})
+	catFileShouldShowObjectType := catFileCommand.Flag("t", "type", &argparse.Options{
+		Default: false,
+		Help:    "Instead of the content, show the object type",
+	})
+	catFileShouldShowSize := catFileCommand.Flag("s", "size", &argparse.Options{
+		Default: false,
+		Help:    "Instead of the content, show the object size",
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
@@ -37,15 +51,38 @@ func main() {
 	if initCommand.Happened() {
 		err := core.Init()
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
 	}
 
 	if hashObjectCommand.Happened() {
 		hexSum, err := core.HashObject(*hashObjectFileInput, *hashObjectFileType, *hashObjectWriteFlag)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
 		fmt.Println(hexSum)
+	}
+
+	if catFileCommand.Happened() {
+		objectInfo, err := core.CatFile(*catFileInput)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if *catFileShouldShowObjectType && *catFileShouldShowSize {
+			fmt.Println("-t and -s cannot be used altogether")
+			return
+		}
+
+		if *catFileShouldShowObjectType {
+			fmt.Println(objectInfo.Type)
+		} else if *catFileShouldShowSize {
+			fmt.Println(objectInfo.Size)
+		} else {
+			fmt.Println(string(objectInfo.Content))
+		}
 	}
 }

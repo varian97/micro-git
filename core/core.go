@@ -74,7 +74,8 @@ func HashObject(path, objectType string, shouldWrite bool) (string, error) {
 		return "", err
 	}
 
-	combined := append([]byte(objectType), '\x00')
+	combined := append([]byte(objectType), []byte(fmt.Sprintf(" %v", len(fileContent)))...)
+	combined = append(combined, '\x00')
 	combined = append(combined, fileContent...)
 	sha1Sum := sha1.Sum(combined)
 	hexSum := hex.EncodeToString(sha1Sum[:])

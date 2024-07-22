@@ -66,7 +66,8 @@ func TestHashBlobObjectNotWriteToDisk(t *testing.T) {
 		t.Fatalf("HashObject return error: %v", err)
 	}
 
-	combined := append([]byte("blob"), '\x00')
+	combined := append([]byte("blob"), []byte(" 5")...)
+	combined = append(combined, '\x00')
 	combined = append(combined, []byte("Hello")...)
 	shaSum := sha1.Sum(combined)
 	expected := hex.EncodeToString(shaSum[:])
@@ -98,7 +99,8 @@ func TestHashBlobObjectWriteToDisk(t *testing.T) {
 		t.Fatalf("HashObject return error: %v", err)
 	}
 
-	combined := append([]byte("blob"), '\x00')
+	combined := append([]byte("blob"), []byte(" 5")...)
+	combined = append(combined, '\x00')
 	combined = append(combined, []byte("Hello")...)
 	shaSum := sha1.Sum(combined)
 	expected := hex.EncodeToString(shaSum[:])

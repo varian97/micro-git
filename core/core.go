@@ -1,11 +1,13 @@
 package core
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 const (
@@ -16,6 +18,12 @@ const (
 	COMMIT_OBJECT_TYPE = "commit"
 	TREE_OBJECT_TYPE   = "tree"
 )
+
+type ObjectInfo struct {
+	Type    string
+	Size    int
+	Content []byte
+}
 
 func Init() error {
 	err := os.Mkdir(MICROGIT_FOLDER_NAME, 0o774)
@@ -101,4 +109,26 @@ func HashObject(path, objectType string, shouldWrite bool) (string, error) {
 	}
 
 	return hexSum, nil
+}
+
+func CatFile(oid string) (*ObjectInfo, error) {
+	folderPrefix, fileName := oid[:2], oid[2:]
+
+	path := filepath.Join(MICROGIT_FOLDER_NAME, "objects", folderPrefix, fileName)
+	fileContent, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	splitted := bytes.Split(fileContent, []byte("\x00"))
+	header, content := splitted[0], splitted[1]
+
+	headerSplitted := bytes.Split(header, []byte(" "))
+	objectType, sizeByte := headerSplitted[0], headerSplitted[1]
+
+	size, err := strconv.Atoi(string(sizeByte))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the object file: %v", err)
+	}
+	return &ObjectInfo{Type: string(objectType), Size: size, Content: content}, nil
 }

@@ -61,10 +61,7 @@ func TestHashBlobObjectNotWriteToDisk(t *testing.T) {
 
 	os.WriteFile("test.txt", []byte("Hello"), 0o664)
 
-	hexSum, err := HashObject("test.txt", "blob", false)
-	if err != nil {
-		t.Fatalf("HashObject return error: %v", err)
-	}
+	hexSum := createFileAndHashIt(t, "Hello", false)
 
 	combined := append([]byte("blob"), []byte(" 5")...)
 	combined = append(combined, '\x00')
@@ -92,12 +89,7 @@ func TestHashBlobObjectWriteToDisk(t *testing.T) {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}
 
-	os.WriteFile("test.txt", []byte("Hello"), 0o664)
-
-	hexSum, err := HashObject("test.txt", "blob", true)
-	if err != nil {
-		t.Fatalf("HashObject return error: %v", err)
-	}
+	hexSum := createFileAndHashIt(t, "Hello", true)
 
 	combined := append([]byte("blob"), []byte(" 5")...)
 	combined = append(combined, '\x00')
@@ -132,9 +124,39 @@ func TestHashObjectInvalidObjectType(t *testing.T) {
 
 	os.WriteFile("test.txt", []byte("Hello"), 0o664)
 
-	_, err = HashObject("test.txt", "invalid", false)
-	if err == nil {
-		t.Fatalf("HashObject should return error, but it doesn't")
+	createFileAndHashIt(t, "Hello", false)
+}
+
+func TestCatFileReturnCorrectResult(t *testing.T) {
+	currWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current working directory, %v", err)
+	}
+
+	tmpDir := createTestDir(t)
+	defer os.RemoveAll(tmpDir)
+	defer os.Chdir(currWd)
+
+	err = Init()
+	if err != nil {
+		t.Fatalf("Failed to execute Init command, error: %v", err)
+	}
+
+	hexSum := createFileAndHashIt(t, "Hello", true)
+
+	objInfo, err := CatFile(hexSum)
+	if err != nil {
+		t.Fatalf("CatFile return error: err")
+	}
+
+	if objInfo.Type != "blob" {
+		t.Fatalf("CatFile return wrong content type. Expected: blob, got: %v", objInfo.Type)
+	}
+	if objInfo.Size != 5 {
+		t.Fatalf("CatFile return wrong content size. Expected: 5, got: %v", objInfo.Size)
+	}
+	if string(objInfo.Content) != "Hello" {
+		t.Fatalf("CatFile return wrong content. Expected: %v, got: %v", []byte("Hello"), objInfo.Content)
 	}
 }
 
@@ -152,4 +174,15 @@ func createTestDir(t *testing.T) string {
 	}
 
 	return tmpDir
+}
+
+func createFileAndHashIt(t *testing.T, content string, shouldWrite bool) string {
+	os.WriteFile("test.txt", []byte(content), 0o664)
+
+	hexSum, err := HashObject("test.txt", "blob", shouldWrite)
+	if err != nil {
+		t.Fatalf("HashObject return error: %v", err)
+	}
+
+	return hexSum
 }

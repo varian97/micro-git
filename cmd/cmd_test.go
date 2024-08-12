@@ -1,8 +1,9 @@
-package core
+package main
 
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"micro-git/db"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +19,7 @@ func TestInit(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = Init()
+	err = db.Init()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}
@@ -84,7 +85,7 @@ func TestHashBlobObjectWriteToDisk(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = Init()
+	err = db.Init()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}
@@ -137,7 +138,7 @@ func TestCatFileReturnCorrectResult(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = Init()
+	err = db.Init()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}

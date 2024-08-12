@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"micro-git/core"
+	"micro-git/db"
+	"micro-git/object"
 
 	"github.com/akamensky/argparse"
 )
@@ -42,6 +43,13 @@ func main() {
 		Help:    "Instead of the content, show the object size",
 	})
 
+	writeTreeCommand := parser.NewCommand("write-tree", "Create tree object from the current index")
+	writeTreePrefix := writeTreeCommand.String("", "prefix", &argparse.Options{
+		Required: false,
+		Help:     "Write a tree object from subdirectory <prefix>",
+		Default:  ".",
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
@@ -49,7 +57,7 @@ func main() {
 	}
 
 	if initCommand.Happened() {
-		err := core.Init()
+		err := Init()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -57,7 +65,7 @@ func main() {
 	}
 
 	if hashObjectCommand.Happened() {
-		hexSum, err := core.HashObject(*hashObjectFileInput, *hashObjectFileType, *hashObjectWriteFlag)
+		hexSum, err := HashObject(*hashObjectFileInput, *hashObjectFileType, *hashObjectWriteFlag)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -66,7 +74,7 @@ func main() {
 	}
 
 	if catFileCommand.Happened() {
-		objectInfo, err := core.CatFile(*catFileInput)
+		objectInfo, err := CatFile(*catFileInput)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -85,4 +93,50 @@ func main() {
 			fmt.Println(string(objectInfo.Content))
 		}
 	}
+
+	if writeTreeCommand.Happened() {
+		treeId, err := WriteTree(*writeTreePrefix)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(treeId)
+	}
+}
+
+func Init() error {
+	return db.Init()
+}
+
+func HashObject(path, objectType string, shouldWrite bool) (string, error) {
+
+	fileContent, err := os.ReadFile(path)
+	if err != nil {
+		err := fmt.Errorf("failed to read file content, %v", err)
+		return "", err
+	}
+
+	if shouldWrite {
+		return object.Write(objectType, fileContent)
+	}
+
+	objectInfo := object.GenInfo(objectType, fileContent)
+	return objectInfo.Oid, nil
+}
+
+func CatFile(oid string) (*object.ObjectInfo, error) {
+	return object.Read(oid)
+}
+
+func WriteTree(prefix string) (string, error) {
+	files, err := os.ReadDir(prefix)
+	if err != nil {
+		return "", err
+	}
+
+	for _, file := range files {
+		fmt.Printf("%v -- %v\n", file.Name(), file.IsDir())
+	}
+
+	return "", nil
 }

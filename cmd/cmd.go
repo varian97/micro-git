@@ -95,7 +95,7 @@ func main() {
 	}
 
 	if writeTreeCommand.Happened() {
-		treeId, err := WriteTree(*writeTreePrefix)
+		treeId, err := object.WriteTree(*writeTreePrefix)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -109,7 +109,6 @@ func Init() error {
 }
 
 func HashObject(path, objectType string, shouldWrite bool) (string, error) {
-
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		err := fmt.Errorf("failed to read file content, %v", err)
@@ -126,17 +125,4 @@ func HashObject(path, objectType string, shouldWrite bool) (string, error) {
 
 func CatFile(oid string) (*object.ObjectInfo, error) {
 	return object.Read(oid)
-}
-
-func WriteTree(prefix string) (string, error) {
-	files, err := os.ReadDir(prefix)
-	if err != nil {
-		return "", err
-	}
-
-	for _, file := range files {
-		fmt.Printf("%v -- %v\n", file.Name(), file.IsDir())
-	}
-
-	return "", nil
 }

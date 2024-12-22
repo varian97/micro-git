@@ -5,10 +5,11 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"micro-git/db"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"micro-git/db"
 )
 
 const (
@@ -26,9 +27,14 @@ type ObjectInfo struct {
 	Oid        string
 }
 
+type treeEntry struct {
+	objectType string
+	oid        string
+	filename   string
+}
+
 func GenInfo(objectType string, fileContent []byte) *ObjectInfo {
-	combinedContent := append([]byte(objectType), []byte(fmt.Sprintf(" %v", len(fileContent)))...)
-	combinedContent = append(combinedContent, '\x00')
+	combinedContent := append([]byte(objectType), []byte(fmt.Sprintf(" %v\x00", len(fileContent)))...)
 	combinedContent = append(combinedContent, fileContent...)
 	sha1Sum := sha1.Sum(combinedContent)
 	hexSum := hex.EncodeToString(sha1Sum[:])
@@ -98,4 +104,50 @@ func Read(oid string) (*ObjectInfo, error) {
 		RawContent: fileContent,
 		Oid:        oid,
 	}, nil
+}
+
+func WriteTree(prefix string) (string, error) {
+	files, err := os.ReadDir(prefix)
+	if err != nil {
+		return "", err
+	}
+
+	entries := []treeEntry{}
+
+	for _, file := range files {
+		if file.Name() == ".microgit" {
+			continue
+		}
+
+		if file.IsDir() {
+			recursiveOid, err := WriteTree(filepath.Join(prefix, file.Name()))
+			if err != nil {
+				err := fmt.Errorf("failed to recursively create tree object %v: %v", file.Name(), err)
+				return "", err
+			}
+
+			entries = append(entries, treeEntry{TREE_OBJECT_TYPE, recursiveOid, file.Name()})
+		} else {
+			fileContent, err := os.ReadFile(filepath.Join(prefix, file.Name()))
+			if err != nil {
+				err := fmt.Errorf("failed to read file content %v: %v", file.Name(), err)
+				return "", err
+			}
+
+			oid, err := Write(BLOB_OBJECT_TYPE, fileContent)
+			if err != nil {
+				return "", err
+			}
+
+			entries = append(entries, treeEntry{BLOB_OBJECT_TYPE, oid, file.Name()})
+		}
+	}
+
+	var treeFileContent []byte
+	for _, entry := range entries {
+		row := fmt.Sprintf("%v %v\t%v\n", entry.objectType, entry.oid, entry.filename)
+		treeFileContent = append(treeFileContent, []byte(row)...)
+	}
+
+	return Write(TREE_OBJECT_TYPE, treeFileContent)
 }

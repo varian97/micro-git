@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"micro-git/db"
 	"micro-git/object"
 
 	"github.com/akamensky/argparse"
@@ -105,7 +104,7 @@ func main() {
 }
 
 func Init() error {
-	return db.Init()
+	return object.InitDB()
 }
 
 func HashObject(path, objectType string, shouldWrite bool) (string, error) {

@@ -3,10 +3,12 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/hex"
-	"micro-git/db"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"micro-git/object"
+	"micro-git/testutil"
 )
 
 func TestInit(t *testing.T) {
@@ -15,11 +17,11 @@ func TestInit(t *testing.T) {
 		t.Fatalf("Failed to get current working directory, %v", err)
 	}
 
-	tmpDir := createTestDir(t)
+	tmpDir := testutil.CreateTestDir(t)
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = db.Init()
+	err = object.InitDB()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}
@@ -56,7 +58,7 @@ func TestHashBlobObjectNotWriteToDisk(t *testing.T) {
 		t.Fatalf("Failed to get current working directory, %v", err)
 	}
 
-	tmpDir := createTestDir(t)
+	tmpDir := testutil.CreateTestDir(t)
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
@@ -81,11 +83,11 @@ func TestHashBlobObjectWriteToDisk(t *testing.T) {
 		t.Fatalf("Failed to get current working directory, %v", err)
 	}
 
-	tmpDir := createTestDir(t)
+	tmpDir := testutil.CreateTestDir(t)
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = db.Init()
+	err = object.InitDB()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}
@@ -119,7 +121,7 @@ func TestHashObjectInvalidObjectType(t *testing.T) {
 		t.Fatalf("Failed to get current working directory, %v", err)
 	}
 
-	tmpDir := createTestDir(t)
+	tmpDir := testutil.CreateTestDir(t)
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
@@ -134,11 +136,11 @@ func TestCatFileReturnCorrectResult(t *testing.T) {
 		t.Fatalf("Failed to get current working directory, %v", err)
 	}
 
-	tmpDir := createTestDir(t)
+	tmpDir := testutil.CreateTestDir(t)
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = db.Init()
+	err = object.InitDB()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}
@@ -147,7 +149,7 @@ func TestCatFileReturnCorrectResult(t *testing.T) {
 
 	objInfo, err := CatFile(hexSum)
 	if err != nil {
-		t.Fatalf("CatFile return error: err")
+		t.Fatalf("CatFile return error: %v", err)
 	}
 
 	if objInfo.Type != "blob" {
@@ -159,22 +161,6 @@ func TestCatFileReturnCorrectResult(t *testing.T) {
 	if string(objInfo.Content) != "Hello" {
 		t.Fatalf("CatFile return wrong content. Expected: %v, got: %v", []byte("Hello"), objInfo.Content)
 	}
-}
-
-func createTestDir(t *testing.T) string {
-	tmpDir, err := os.MkdirTemp("", "microgit-test")
-	if err != nil {
-		os.RemoveAll(tmpDir)
-		t.Fatalf("Failed to create temp dir for testing, %v", err)
-	}
-
-	err = os.Chdir(tmpDir)
-	if err != nil {
-		os.RemoveAll(tmpDir)
-		t.Fatalf("Failed to switch working directory to temp dir, %v", err)
-	}
-
-	return tmpDir
 }
 
 func createFileAndHashIt(t *testing.T, content string, shouldWrite bool) string {

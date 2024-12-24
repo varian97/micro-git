@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+)
 
-	"micro-git/db"
+const (
+	FOLDER_NAME = ".microgit"
 )
 
 const (
@@ -31,6 +33,51 @@ type treeEntry struct {
 	objectType string
 	oid        string
 	filename   string
+}
+
+func InitDB() error {
+	err := os.Mkdir(FOLDER_NAME, 0o774)
+	if err != nil {
+		errorMessage := fmt.Errorf("failed to initialize .microgit folder: %v", err)
+		return errorMessage
+	}
+
+	refsFolderPath := filepath.Join(FOLDER_NAME, "refs")
+	err = os.Mkdir(refsFolderPath, 0o774)
+	if err != nil {
+		errorMessage := fmt.Errorf("failed to initialize refs folder: %v", err)
+		return errorMessage
+	}
+
+	refsHeadsFolderPath := filepath.Join(FOLDER_NAME, "refs", "heads")
+	err = os.Mkdir(refsHeadsFolderPath, 0o774)
+	if err != nil {
+		errorMessage := fmt.Errorf("failed to initialize refs folder: %v", err)
+		return errorMessage
+	}
+
+	refsTagsFolderPath := filepath.Join(FOLDER_NAME, "refs", "tags")
+	err = os.Mkdir(refsTagsFolderPath, 0o774)
+	if err != nil {
+		errorMessage := fmt.Errorf("failed to initialize refs folder: %v", err)
+		return errorMessage
+	}
+
+	objectsFolderPath := filepath.Join(FOLDER_NAME, "objects")
+	err = os.Mkdir(objectsFolderPath, 0o774)
+	if err != nil {
+		errorMessage := fmt.Errorf("failed to initialize objects folder: %v", err)
+		return errorMessage
+	}
+
+	headsFilePath := filepath.Join(FOLDER_NAME, "HEAD")
+	err = os.WriteFile(headsFilePath, []byte("ref: refs/heads/master"), 0o664)
+	if err != nil {
+		errorMessage := fmt.Errorf("failed to initialize HEAD: %v", err)
+		return errorMessage
+	}
+
+	return nil
 }
 
 func GenInfo(objectType string, fileContent []byte) *ObjectInfo {
@@ -60,7 +107,7 @@ func Write(objectType string, fileContent []byte) (string, error) {
 	objectInfo := GenInfo(objectType, fileContent)
 
 	initial, fileId := objectInfo.Oid[:2], objectInfo.Oid[2:]
-	folderName := filepath.Join(db.FOLDER_NAME, "objects", initial)
+	folderName := filepath.Join(FOLDER_NAME, "objects", initial)
 	fileName := filepath.Join(folderName, fileId)
 
 	err := os.MkdirAll(folderName, 0o774)
@@ -81,7 +128,7 @@ func Write(objectType string, fileContent []byte) (string, error) {
 func Read(oid string) (*ObjectInfo, error) {
 	folderPrefix, fileName := oid[:2], oid[2:]
 
-	path := filepath.Join(db.FOLDER_NAME, "objects", folderPrefix, fileName)
+	path := filepath.Join(FOLDER_NAME, "objects", folderPrefix, fileName)
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

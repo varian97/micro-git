@@ -56,7 +56,7 @@ func main() {
 	}
 
 	if initCommand.Happened() {
-		err := Init()
+		err := object.InitDB()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -73,7 +73,7 @@ func main() {
 	}
 
 	if catFileCommand.Happened() {
-		objectInfo, err := CatFile(*catFileInput)
+		objectInfo, err := object.Read(*catFileInput)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -103,10 +103,6 @@ func main() {
 	}
 }
 
-func Init() error {
-	return object.InitDB()
-}
-
 func HashObject(path, objectType string, shouldWrite bool) (string, error) {
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
@@ -120,8 +116,4 @@ func HashObject(path, objectType string, shouldWrite bool) (string, error) {
 
 	objectInfo := object.GenInfo(objectType, fileContent)
 	return objectInfo.Oid, nil
-}
-
-func CatFile(oid string) (*object.ObjectInfo, error) {
-	return object.Read(oid)
 }

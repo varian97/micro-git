@@ -147,7 +147,7 @@ func TestCatFileReturnCorrectResult(t *testing.T) {
 
 	hexSum := createFileAndHashIt(t, "Hello", true)
 
-	objInfo, err := CatFile(hexSum)
+	objInfo, err := object.Read(hexSum)
 	if err != nil {
 		t.Fatalf("CatFile return error: %v", err)
 	}

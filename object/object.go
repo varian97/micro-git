@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -197,4 +198,52 @@ func WriteTree(prefix string) (string, error) {
 	}
 
 	return Write(TREE_OBJECT_TYPE, treeFileContent)
+}
+
+func ReadTree(oid string) error {
+	filenameByOid := make(map[string]string)
+
+	recursivelyReadTree(oid, ".", filenameByOid)
+
+	// @todo: read each entry and apply the file content into the working directory
+	fmt.Println(filenameByOid)
+
+	return nil
+}
+
+func recursivelyReadTree(oid, prefix string, filenameByOid map[string]string) error {
+	objectInfo, err := Read(oid)
+	if err != nil {
+		return err
+	}
+
+	fileContent := string(objectInfo.Content)
+	lines := strings.Split(fileContent, "\n")
+
+	for _, line := range lines {
+		// handle empty line due to write-tree join everything with \n
+		if line == "" {
+			continue
+		}
+
+		segment := strings.Split(line, "\t")
+		objectInfos := segment[0]
+		filename := segment[1]
+
+		subSegment := strings.Split(objectInfos, " ")
+		objectType := subSegment[0]
+		entryOid := subSegment[1]
+
+		filenameJoinedByPath := filepath.Join(prefix, filename)
+
+		if objectType == BLOB_OBJECT_TYPE {
+			filenameByOid[entryOid] = filenameJoinedByPath
+		} else if objectType == TREE_OBJECT_TYPE {
+			recursivelyReadTree(entryOid, filenameJoinedByPath, filenameByOid)
+		} else {
+			return fmt.Errorf("read-tree found unidentifiable object type %v", objectType)
+		}
+	}
+
+	return nil
 }

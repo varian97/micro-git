@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -197,4 +198,83 @@ func WriteTree(prefix string) (string, error) {
 	}
 
 	return Write(TREE_OBJECT_TYPE, treeFileContent)
+}
+
+func ReadTree(oid string) error {
+	filenamePathByOid := make(map[string]string)
+
+	err := recursivelyReadTree(oid, ".", filenamePathByOid)
+	if err != nil {
+		return err
+	}
+
+	// @todo: How to make sure operation is atomic?
+	for oid, filenamePath := range filenamePathByOid {
+		objectInfo, err := Read(oid)
+		if err != nil {
+			fmt.Printf("file %v failed to read, skipping...\n", filenamePath)
+			continue
+		}
+
+		path := filepath.Dir(filenamePath)
+
+		err = os.MkdirAll(path, 0o777)
+		if err != nil {
+			fmt.Println(err)
+			fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
+			continue
+		}
+
+		err = os.WriteFile(filenamePath, objectInfo.Content, 0o664)
+		if err != nil {
+			fmt.Println(err)
+			fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
+			continue
+		}
+
+		fmt.Println(filenamePath)
+	}
+
+	return nil
+}
+
+/*
+put all the tree entries (oid and filename) into a map for further processing.
+filenamePathByOid already contains filename that joined by path to make it easier processing the file.
+*/
+func recursivelyReadTree(oid, prefix string, filenamePathByOid map[string]string) error {
+	objectInfo, err := Read(oid)
+	if err != nil {
+		return err
+	}
+
+	fileContent := string(objectInfo.Content)
+	lines := strings.Split(fileContent, "\n")
+
+	for _, line := range lines {
+		// handle empty line due to write-tree join everything with \n
+		if line == "" {
+			continue
+		}
+
+		segment := strings.Split(line, "\t")
+		objectInfos := segment[0]
+		filename := segment[1]
+
+		subSegment := strings.Split(objectInfos, " ")
+		objectType := subSegment[0]
+		entryOid := subSegment[1]
+
+		filenameJoinedByPath := filepath.Join(prefix, filename)
+
+		if objectType == BLOB_OBJECT_TYPE {
+			filenamePathByOid[entryOid] = filenameJoinedByPath
+		} else if objectType == TREE_OBJECT_TYPE {
+			recursivelyReadTree(entryOid, filenameJoinedByPath, filenamePathByOid)
+		} else {
+			return fmt.Errorf("read-tree found unidentifiable object type %v", objectType)
+		}
+	}
+
+	return nil
 }

@@ -49,6 +49,12 @@ func main() {
 		Default:  ".",
 	})
 
+	readTreeCommand := parser.NewCommand("read-tree", "Reads tree information into the index")
+	readTreeInput := readTreeCommand.StringPositional(&argparse.Options{
+		Required: true,
+		Help:     "The id of the tree object to be read/merged",
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
@@ -100,6 +106,14 @@ func main() {
 			return
 		}
 		fmt.Println(treeId)
+	}
+
+	if readTreeCommand.Happened() {
+		err := object.ReadTree(*readTreeInput)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 }
 

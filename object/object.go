@@ -201,17 +201,48 @@ func WriteTree(prefix string) (string, error) {
 }
 
 func ReadTree(oid string) error {
-	filenameByOid := make(map[string]string)
+	filenamePathByOid := make(map[string]string)
 
-	recursivelyReadTree(oid, ".", filenameByOid)
+	err := recursivelyReadTree(oid, ".", filenamePathByOid)
+	if err != nil {
+		return err
+	}
 
-	// @todo: read each entry and apply the file content into the working directory
-	fmt.Println(filenameByOid)
+	// @todo: How to make sure operation is atomic?
+	for oid, filenamePath := range filenamePathByOid {
+		objectInfo, err := Read(oid)
+		if err != nil {
+			fmt.Printf("file %v failed to read, skipping...\n", filenamePath)
+			continue
+		}
+
+		path := filepath.Dir(filenamePath)
+
+		err = os.MkdirAll(path, 0o777)
+		if err != nil {
+			fmt.Println(err)
+			fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
+			continue
+		}
+
+		err = os.WriteFile(filenamePath, objectInfo.Content, 0o664)
+		if err != nil {
+			fmt.Println(err)
+			fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
+			continue
+		}
+
+		fmt.Println(filenamePath)
+	}
 
 	return nil
 }
 
-func recursivelyReadTree(oid, prefix string, filenameByOid map[string]string) error {
+/*
+put all the tree entries (oid and filename) into a map for further processing.
+filenamePathByOid already contains filename that joined by path to make it easier processing the file.
+*/
+func recursivelyReadTree(oid, prefix string, filenamePathByOid map[string]string) error {
 	objectInfo, err := Read(oid)
 	if err != nil {
 		return err
@@ -237,9 +268,9 @@ func recursivelyReadTree(oid, prefix string, filenameByOid map[string]string) er
 		filenameJoinedByPath := filepath.Join(prefix, filename)
 
 		if objectType == BLOB_OBJECT_TYPE {
-			filenameByOid[entryOid] = filenameJoinedByPath
+			filenamePathByOid[entryOid] = filenameJoinedByPath
 		} else if objectType == TREE_OBJECT_TYPE {
-			recursivelyReadTree(entryOid, filenameJoinedByPath, filenameByOid)
+			recursivelyReadTree(entryOid, filenameJoinedByPath, filenamePathByOid)
 		} else {
 			return fmt.Errorf("read-tree found unidentifiable object type %v", objectType)
 		}

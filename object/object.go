@@ -6,13 +6,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
-)
+	"time"
 
-const (
-	FOLDER_NAME = ".microgit"
+	"micro-git/refs"
+	"micro-git/root"
 )
 
 const (
@@ -34,51 +35,6 @@ type treeEntry struct {
 	objectType string
 	oid        string
 	filename   string
-}
-
-func InitDB() error {
-	err := os.Mkdir(FOLDER_NAME, 0o774)
-	if err != nil {
-		errorMessage := fmt.Errorf("failed to initialize .microgit folder: %v", err)
-		return errorMessage
-	}
-
-	refsFolderPath := filepath.Join(FOLDER_NAME, "refs")
-	err = os.Mkdir(refsFolderPath, 0o774)
-	if err != nil {
-		errorMessage := fmt.Errorf("failed to initialize refs folder: %v", err)
-		return errorMessage
-	}
-
-	refsHeadsFolderPath := filepath.Join(FOLDER_NAME, "refs", "heads")
-	err = os.Mkdir(refsHeadsFolderPath, 0o774)
-	if err != nil {
-		errorMessage := fmt.Errorf("failed to initialize refs folder: %v", err)
-		return errorMessage
-	}
-
-	refsTagsFolderPath := filepath.Join(FOLDER_NAME, "refs", "tags")
-	err = os.Mkdir(refsTagsFolderPath, 0o774)
-	if err != nil {
-		errorMessage := fmt.Errorf("failed to initialize refs folder: %v", err)
-		return errorMessage
-	}
-
-	objectsFolderPath := filepath.Join(FOLDER_NAME, "objects")
-	err = os.Mkdir(objectsFolderPath, 0o774)
-	if err != nil {
-		errorMessage := fmt.Errorf("failed to initialize objects folder: %v", err)
-		return errorMessage
-	}
-
-	headsFilePath := filepath.Join(FOLDER_NAME, "HEAD")
-	err = os.WriteFile(headsFilePath, []byte("ref: refs/heads/master"), 0o664)
-	if err != nil {
-		errorMessage := fmt.Errorf("failed to initialize HEAD: %v", err)
-		return errorMessage
-	}
-
-	return nil
 }
 
 func GenInfo(objectType string, fileContent []byte) *ObjectInfo {
@@ -108,7 +64,7 @@ func Write(objectType string, fileContent []byte) (string, error) {
 	objectInfo := GenInfo(objectType, fileContent)
 
 	initial, fileId := objectInfo.Oid[:2], objectInfo.Oid[2:]
-	folderName := filepath.Join(FOLDER_NAME, "objects", initial)
+	folderName := filepath.Join(root.FOLDER_NAME, "objects", initial)
 	fileName := filepath.Join(folderName, fileId)
 
 	err := os.MkdirAll(folderName, 0o774)
@@ -129,7 +85,7 @@ func Write(objectType string, fileContent []byte) (string, error) {
 func Read(oid string) (*ObjectInfo, error) {
 	folderPrefix, fileName := oid[:2], oid[2:]
 
-	path := filepath.Join(FOLDER_NAME, "objects", folderPrefix, fileName)
+	path := filepath.Join(root.FOLDER_NAME, "objects", folderPrefix, fileName)
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -236,6 +192,55 @@ func ReadTree(oid string) error {
 	}
 
 	return nil
+}
+
+func Commit(msg string) (string, error) {
+	treeOid, err := WriteTree(".")
+	if err != nil {
+		return "", err
+	}
+
+	fileContent := []byte(fmt.Sprintf("%v %v\n", TREE_OBJECT_TYPE, treeOid))
+
+	// parent commit
+	refPointed, err := refs.GetCurrentHead()
+	fmt.Println("REF POINTED ", refPointed)
+	if err != nil {
+		return "", fmt.Errorf("failed to read HEAD file, %v", err)
+	}
+
+	refContent, err := refs.GetRefContent(refPointed)
+	if err != nil {
+		return "", fmt.Errorf("failed to read ref file, %v", err)
+	}
+	fmt.Println("REF Content ", refContent)
+	if refContent != "" {
+		fileContent = append(fileContent, []byte(fmt.Sprintf("parent %v\n", refContent))...)
+	}
+
+	// author
+	usr, err := user.Current()
+	var username string
+	if err == nil {
+		username = usr.Username
+	} else {
+		username = "<anonymous>"
+	}
+	fileContent = append(fileContent, []byte(fmt.Sprintf("author %v %v\n\n", username, time.Now().Unix()))...)
+
+	// commit message
+	fileContent = append(fileContent, []byte(msg)...)
+
+	commitOid, err := Write(COMMIT_OBJECT_TYPE, fileContent)
+	if err != nil {
+		return "", err
+	}
+
+	// @todo: How to handle if error happened here?
+	_, err = refs.SetRefContent(refPointed, commitOid)
+	fmt.Println(err)
+
+	return commitOid, nil
 }
 
 /*

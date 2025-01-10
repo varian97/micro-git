@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"micro-git/root"
 	"micro-git/testutil"
 )
 
@@ -47,7 +48,7 @@ func TestWriteTree(t *testing.T) {
 	tmpDir := testutil.CreateTestDir(t)
 	defer os.RemoveAll(tmpDir)
 
-	err := InitDB()
+	err := root.InitDB()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}

@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"micro-git/object"
+	"micro-git/root"
 
 	"github.com/akamensky/argparse"
 )
@@ -55,6 +57,12 @@ func main() {
 		Help:     "The id of the tree object to be read/merged",
 	})
 
+	commitCommand := parser.NewCommand("commit", "Record changes to the repository")
+	commitMessageInput := commitCommand.String("m", "message", &argparse.Options{
+		Help:     "The commit message",
+		Required: true,
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
@@ -62,7 +70,7 @@ func main() {
 	}
 
 	if initCommand.Happened() {
-		err := object.InitDB()
+		err := root.InitDB()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -79,24 +87,12 @@ func main() {
 	}
 
 	if catFileCommand.Happened() {
-		objectInfo, err := object.Read(*catFileInput)
+		info, err := CatFile(*catFileInput, *catFileShouldShowObjectType, *catFileShouldShowSize)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-
-		if *catFileShouldShowObjectType && *catFileShouldShowSize {
-			fmt.Println("-t and -s cannot be used altogether")
-			return
-		}
-
-		if *catFileShouldShowObjectType {
-			fmt.Println(objectInfo.Type)
-		} else if *catFileShouldShowSize {
-			fmt.Println(objectInfo.Size)
-		} else {
-			fmt.Println(string(objectInfo.Content))
-		}
+		fmt.Println(info)
 	}
 
 	if writeTreeCommand.Happened() {
@@ -115,6 +111,15 @@ func main() {
 			return
 		}
 	}
+
+	if commitCommand.Happened() {
+		commitOid, err := object.Commit(*commitMessageInput)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(commitOid)
+	}
 }
 
 func HashObject(path, objectType string, shouldWrite bool) (string, error) {
@@ -130,4 +135,24 @@ func HashObject(path, objectType string, shouldWrite bool) (string, error) {
 
 	objectInfo := object.GenInfo(objectType, fileContent)
 	return objectInfo.Oid, nil
+}
+
+func CatFile(oid string, shouldShowType, shouldShowSize bool) (string, error) {
+	objectInfo, err := object.Read(oid)
+	if err != nil {
+		return "", err
+	}
+
+	if shouldShowType && shouldShowSize {
+		err = fmt.Errorf("-t and -s cannot be used altogether")
+		return "", err
+	}
+
+	if shouldShowType {
+		return objectInfo.Type, nil
+	} else if shouldShowSize {
+		return strconv.Itoa(objectInfo.Size), nil
+	} else {
+		return string(objectInfo.Content), nil
+	}
 }

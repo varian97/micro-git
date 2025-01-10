@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"micro-git/object"
+	"micro-git/root"
 	"micro-git/testutil"
 )
 
@@ -21,7 +22,7 @@ func TestInit(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = object.InitDB()
+	err = root.InitDB()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}
@@ -87,7 +88,7 @@ func TestHashBlobObjectWriteToDisk(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = object.InitDB()
+	err = root.InitDB()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}
@@ -140,7 +141,7 @@ func TestCatFileReturnCorrectResult(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	defer os.Chdir(currWd)
 
-	err = object.InitDB()
+	err = root.InitDB()
 	if err != nil {
 		t.Fatalf("Failed to execute Init command, error: %v", err)
 	}

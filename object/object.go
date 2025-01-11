@@ -203,6 +203,8 @@ func Commit(msg string) (string, error) {
 	fileContent := []byte(fmt.Sprintf("%v %v\n", TREE_OBJECT_TYPE, treeOid))
 
 	// parent commit
+	// @todo: commit the same working directory will cause parent to point to the same commit
+	// How to check no changes since last commit?
 	refPointed, err := refs.GetCurrentHead()
 	if err != nil {
 		return "", fmt.Errorf("failed to read HEAD file, %v", err)

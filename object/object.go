@@ -204,7 +204,6 @@ func Commit(msg string) (string, error) {
 
 	// parent commit
 	refPointed, err := refs.GetCurrentHead()
-	fmt.Println("REF POINTED ", refPointed)
 	if err != nil {
 		return "", fmt.Errorf("failed to read HEAD file, %v", err)
 	}
@@ -213,7 +212,6 @@ func Commit(msg string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read ref file, %v", err)
 	}
-	fmt.Println("REF Content ", refContent)
 	if refContent != "" {
 		fileContent = append(fileContent, []byte(fmt.Sprintf("parent %v\n", refContent))...)
 	}
@@ -237,8 +235,7 @@ func Commit(msg string) (string, error) {
 	}
 
 	// @todo: How to handle if error happened here?
-	_, err = refs.SetRefContent(refPointed, commitOid)
-	fmt.Println(err)
+	refs.SetRefContent(refPointed, commitOid)
 
 	return commitOid, nil
 }

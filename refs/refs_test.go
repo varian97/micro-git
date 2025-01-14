@@ -93,6 +93,27 @@ func (suite *RefsTestSuite) TestGetRefContentNonEmptyCommitOid() {
 	}
 }
 
+func (suite *RefsTestSuite) TestSetRefContent() {
+	expectedCommitOid := "asfdasldkfs1212321"
+
+	_, err := SetRefContent("refs/heads/master", expectedCommitOid)
+	if err != nil {
+		suite.FailNow("Failed set the ref file content", "Error: %v", err)
+	}
+
+	commitOid, err := GetRefContent("refs/heads/master")
+	if err != nil {
+		suite.FailNow("Failed to read the ref file", "Error: %v", err)
+	}
+
+	if commitOid != expectedCommitOid {
+		suite.FailNow(
+			"The content of commit oid is not match",
+			"Expected: %v, got: %v", expectedCommitOid, commitOid,
+		)
+	}
+}
+
 func TestRefsTestSuite(t *testing.T) {
 	suite.Run(t, new(RefsTestSuite))
 }

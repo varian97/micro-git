@@ -133,7 +133,11 @@ func HashObject(path, objectType string, shouldWrite bool) (string, error) {
 		return object.Write(objectType, fileContent)
 	}
 
-	objectInfo := object.GenInfo(objectType, fileContent)
+	objectInfo, err := object.GenInfo(objectType, fileContent)
+	if err != nil {
+		return "", err
+	}
+
 	return objectInfo.Oid, nil
 }
 

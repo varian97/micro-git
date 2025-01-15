@@ -22,7 +22,10 @@ func TestGenInfo(t *testing.T) {
 	sha := sha1.Sum(rawContent)
 	oid := hex.EncodeToString(sha[:])
 
-	objectInfo := GenInfo(objectType, fileContent)
+	objectInfo, err := GenInfo(objectType, fileContent)
+	if err != nil {
+		t.Fatalf("GenInfo returns error %v", err)
+	}
 
 	if objectInfo.Type != objectType {
 		t.Fatalf("objectInfo.Type is incorrect. Expected: %v, got: %v", objectType, objectInfo.Type)

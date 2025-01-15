@@ -20,7 +20,7 @@ type RefsTestSuite struct {
 func (suite *RefsTestSuite) SetupSuite() {
 	currWd, err := os.Getwd()
 	if err != nil {
-		suite.FailNow("Failed to get current working directory", "Error: ", err)
+		suite.FailNow("Failed to get current working directory", "Error: %v", err)
 	}
 
 	suite.currWd = currWd
@@ -50,13 +50,7 @@ func (suite *RefsTestSuite) TestGetCurrentHead() {
 	if err != nil {
 		suite.FailNow("Failed to read the HEAD file", "Error: %v", err)
 	}
-
-	if refsPointedByHead != "refs/heads/master" {
-		suite.FailNow(
-			"The content of HEAD file is not match",
-			"Expected: refs/heads/master, got: %v", refsPointedByHead,
-		)
-	}
+	suite.Equal("refs/heads/master", refsPointedByHead)
 }
 
 func (suite *RefsTestSuite) TestGetRefContentEmptyCommitOid() {
@@ -64,17 +58,12 @@ func (suite *RefsTestSuite) TestGetRefContentEmptyCommitOid() {
 	if err != nil {
 		suite.FailNow("Failed to read the ref file", "Error: %v", err)
 	}
-
-	if commitOid != "" {
-		suite.FailNow(
-			"The content of commit oid is not match",
-			"Expected: '', got: %v", commitOid,
-		)
-	}
+	suite.Equal("", commitOid)
 }
 
 func (suite *RefsTestSuite) TestGetRefContentNonEmptyCommitOid() {
 	expectedCommitOid := "asfdasldkfs1212321"
+
 	err := os.WriteFile(filepath.Join(".microgit", "refs/heads/master"), []byte(expectedCommitOid), 0o664)
 	if err != nil {
 		suite.FailNow("Failed initialize the ref file", "Error: %v", err)
@@ -84,13 +73,7 @@ func (suite *RefsTestSuite) TestGetRefContentNonEmptyCommitOid() {
 	if err != nil {
 		suite.FailNow("Failed to read the ref file", "Error: %v", err)
 	}
-
-	if commitOid != expectedCommitOid {
-		suite.FailNow(
-			"The content of commit oid is not match",
-			"Expected: %v, got: %v", expectedCommitOid, commitOid,
-		)
-	}
+	suite.Equal(expectedCommitOid, commitOid)
 }
 
 func (suite *RefsTestSuite) TestSetRefContent() {
@@ -98,20 +81,14 @@ func (suite *RefsTestSuite) TestSetRefContent() {
 
 	_, err := SetRefContent("refs/heads/master", expectedCommitOid)
 	if err != nil {
-		suite.FailNow("Failed set the ref file content", "Error: %v", err)
+		suite.FailNow("Failed to set the ref file content", "Error: %v", err)
 	}
 
 	commitOid, err := GetRefContent("refs/heads/master")
 	if err != nil {
 		suite.FailNow("Failed to read the ref file", "Error: %v", err)
 	}
-
-	if commitOid != expectedCommitOid {
-		suite.FailNow(
-			"The content of commit oid is not match",
-			"Expected: %v, got: %v", expectedCommitOid, commitOid,
-		)
-	}
+	suite.Equal(expectedCommitOid, commitOid)
 }
 
 func TestRefsTestSuite(t *testing.T) {

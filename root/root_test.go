@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"micro-git/testutil"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInitDB(t *testing.T) {
@@ -45,7 +47,5 @@ func TestInitDB(t *testing.T) {
 	}
 
 	expectedHeadContent := "ref: refs/heads/master"
-	if string(headContent) != expectedHeadContent {
-		t.Fatalf("The content of HEAD file is not match. Expected: %v, got: %v", expectedHeadContent, string(headContent))
-	}
+	assert.Equal(t, expectedHeadContent, string(headContent))
 }

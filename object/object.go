@@ -37,7 +37,15 @@ type treeEntry struct {
 	filename   string
 }
 
-func GenInfo(objectType string, fileContent []byte) *ObjectInfo {
+func GenInfo(objectType string, fileContent []byte) (*ObjectInfo, error) {
+	if objectType != BLOB_OBJECT_TYPE &&
+		objectType != TAG_OBJECT_TYPE &&
+		objectType != COMMIT_OBJECT_TYPE &&
+		objectType != TREE_OBJECT_TYPE {
+		err := fmt.Errorf("invalid objectType supplied: %v", objectType)
+		return nil, err
+	}
+
 	combinedContent := append([]byte(objectType), []byte(fmt.Sprintf(" %v\x00", len(fileContent)))...)
 	combinedContent = append(combinedContent, fileContent...)
 	sha1Sum := sha1.Sum(combinedContent)
@@ -49,7 +57,7 @@ func GenInfo(objectType string, fileContent []byte) *ObjectInfo {
 		Content:    fileContent,
 		RawContent: combinedContent,
 		Oid:        hexSum,
-	}
+	}, nil
 }
 
 func Write(objectType string, fileContent []byte) (string, error) {
@@ -61,7 +69,9 @@ func Write(objectType string, fileContent []byte) (string, error) {
 		return "", err
 	}
 
-	objectInfo := GenInfo(objectType, fileContent)
+	// error is not possible because the only error that can happened inside GenInfo
+	// already handled in this function as well
+	objectInfo, _ := GenInfo(objectType, fileContent)
 
 	initial, fileId := objectInfo.Oid[:2], objectInfo.Oid[2:]
 	folderName := filepath.Join(root.FOLDER_NAME, "objects", initial)

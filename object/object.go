@@ -37,7 +37,15 @@ type treeEntry struct {
 	filename   string
 }
 
-func GenInfo(objectType string, fileContent []byte) *ObjectInfo {
+func GenInfo(objectType string, fileContent []byte) (*ObjectInfo, error) {
+	if objectType != BLOB_OBJECT_TYPE &&
+		objectType != TAG_OBJECT_TYPE &&
+		objectType != COMMIT_OBJECT_TYPE &&
+		objectType != TREE_OBJECT_TYPE {
+		err := fmt.Errorf("invalid objectType supplied: %v", objectType)
+		return nil, err
+	}
+
 	combinedContent := append([]byte(objectType), []byte(fmt.Sprintf(" %v\x00", len(fileContent)))...)
 	combinedContent = append(combinedContent, fileContent...)
 	sha1Sum := sha1.Sum(combinedContent)
@@ -49,7 +57,7 @@ func GenInfo(objectType string, fileContent []byte) *ObjectInfo {
 		Content:    fileContent,
 		RawContent: combinedContent,
 		Oid:        hexSum,
-	}
+	}, nil
 }
 
 func Write(objectType string, fileContent []byte) (string, error) {
@@ -61,7 +69,9 @@ func Write(objectType string, fileContent []byte) (string, error) {
 		return "", err
 	}
 
-	objectInfo := GenInfo(objectType, fileContent)
+	// error is not possible because the only error that can happened inside GenInfo
+	// already handled in this function as well
+	objectInfo, _ := GenInfo(objectType, fileContent)
 
 	initial, fileId := objectInfo.Oid[:2], objectInfo.Oid[2:]
 	folderName := filepath.Join(root.FOLDER_NAME, "objects", initial)
@@ -157,38 +167,52 @@ func WriteTree(prefix string) (string, error) {
 }
 
 func ReadTree(oid string) error {
-	filenamePathByOid := make(map[string]string)
+	treeEntries := make([]treeEntry, 0, 10)
 
-	err := recursivelyReadTree(oid, ".", filenamePathByOid)
+	err := recursivelyReadTree(oid, ".", &treeEntries)
 	if err != nil {
 		return err
 	}
 
 	// @todo: How to make sure operation is atomic?
-	for oid, filenamePath := range filenamePathByOid {
-		objectInfo, err := Read(oid)
-		if err != nil {
-			fmt.Printf("file %v failed to read, skipping...\n", filenamePath)
-			continue
+	for _, treeEntry := range treeEntries {
+		filenamePath := treeEntry.filename
+		isDir := treeEntry.objectType == TREE_OBJECT_TYPE
+		entryOid := treeEntry.oid
+
+		fmt.Printf("%v %v %v", filenamePath, isDir, entryOid)
+
+		if isDir {
+			err := os.MkdirAll(filenamePath, 0o777)
+			if err != nil {
+				fmt.Printf("dir %v failed to read, skipping...\n", filenamePath)
+				continue
+			}
+		} else {
+			objectInfo, err := Read(entryOid)
+			if err != nil {
+				fmt.Printf("file %v failed to read, skipping...\n", filenamePath)
+				continue
+			}
+
+			path := filepath.Dir(filenamePath)
+
+			err = os.MkdirAll(path, 0o777)
+			if err != nil {
+				fmt.Println(err)
+				fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
+				continue
+			}
+
+			err = os.WriteFile(filenamePath, objectInfo.Content, 0o664)
+			if err != nil {
+				fmt.Println(err)
+				fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
+				continue
+			}
+
+			fmt.Println(filenamePath)
 		}
-
-		path := filepath.Dir(filenamePath)
-
-		err = os.MkdirAll(path, 0o777)
-		if err != nil {
-			fmt.Println(err)
-			fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
-			continue
-		}
-
-		err = os.WriteFile(filenamePath, objectInfo.Content, 0o664)
-		if err != nil {
-			fmt.Println(err)
-			fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
-			continue
-		}
-
-		fmt.Println(filenamePath)
 	}
 
 	return nil
@@ -246,7 +270,7 @@ func Commit(msg string) (string, error) {
 put all the tree entries (oid and filename) into a map for further processing.
 filenamePathByOid already contains filename that joined by path to make it easier processing the file.
 */
-func recursivelyReadTree(oid, prefix string, filenamePathByOid map[string]string) error {
+func recursivelyReadTree(oid, prefix string, treeEntries *[]treeEntry) error {
 	objectInfo, err := Read(oid)
 	if err != nil {
 		return err
@@ -271,11 +295,15 @@ func recursivelyReadTree(oid, prefix string, filenamePathByOid map[string]string
 
 		filenameJoinedByPath := filepath.Join(prefix, filename)
 
-		if objectType == BLOB_OBJECT_TYPE {
-			filenamePathByOid[entryOid] = filenameJoinedByPath
-		} else if objectType == TREE_OBJECT_TYPE {
-			recursivelyReadTree(entryOid, filenameJoinedByPath, filenamePathByOid)
-		} else {
+		*treeEntries = append(*treeEntries, treeEntry{
+			filename:   filenameJoinedByPath,
+			oid:        entryOid,
+			objectType: objectType,
+		})
+
+		if objectType == TREE_OBJECT_TYPE {
+			recursivelyReadTree(entryOid, filenameJoinedByPath, treeEntries)
+		} else if objectType != BLOB_OBJECT_TYPE {
 			return fmt.Errorf("read-tree found unidentifiable object type %v", objectType)
 		}
 	}

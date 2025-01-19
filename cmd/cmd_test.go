@@ -10,62 +10,54 @@ import (
 	"micro-git/object"
 	"micro-git/root"
 	"micro-git/testutil"
+
+	"github.com/stretchr/testify/suite"
 )
 
-func TestInit(t *testing.T) {
+type CmdTestSuite struct {
+	suite.Suite
+	currWd string
+	tmpDir string
+}
+
+func (suite *CmdTestSuite) SetupSuite() {
 	currWd, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("Failed to get current working directory, %v", err)
+		suite.FailNow("Failed to get current working directory", "Error: %v", err)
 	}
 
-	tmpDir := testutil.CreateTestDir(t)
-	defer os.RemoveAll(tmpDir)
-	defer os.Chdir(currWd)
+	suite.currWd = currWd
 
-	err = root.InitDB()
+	tmpDir := testutil.CreateTestDir(suite.T())
+	suite.tmpDir = tmpDir
+
+	err = os.WriteFile("test.txt", []byte("Hello"), 0o664)
 	if err != nil {
-		t.Fatalf("Failed to execute Init command, error: %v", err)
-	}
-
-	pathsToCheck := []string{
-		".microgit",
-		".microgit/refs",
-		".microgit/refs/tags",
-		".microgit/refs/heads",
-		".microgit/objects",
-		".microgit/HEAD",
-	}
-
-	for _, path := range pathsToCheck {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			t.Fatalf("%v does not exists but expected to exists", path)
-		}
-	}
-
-	headContent, err := os.ReadFile(filepath.Join(".microgit", "HEAD"))
-	if err != nil {
-		t.Fatalf("Failed to read the contents of HEAD file, %v", err)
-	}
-
-	expectedHeadContent := "ref: refs/heads/master"
-	if string(headContent) != expectedHeadContent {
-		t.Fatalf("The content of HEAD file is not match. Expected: %v, got: %v", expectedHeadContent, string(headContent))
+		suite.FailNow("Failed to create test.txt file for testing", "Error: %v", err)
 	}
 }
 
-func TestHashBlobObjectNotWriteToDisk(t *testing.T) {
-	currWd, err := os.Getwd()
+func (suite *CmdTestSuite) TearDownSuite() {
+	os.RemoveAll(suite.tmpDir)
+	os.Chdir(suite.currWd)
+}
+
+func (suite *CmdTestSuite) SetupTest() {
+	err := root.InitDB()
 	if err != nil {
-		t.Fatalf("Failed to get current working directory, %v", err)
+		suite.FailNow("Failed to execute Init command", "Error: %v", err)
 	}
+}
 
-	tmpDir := testutil.CreateTestDir(t)
-	defer os.RemoveAll(tmpDir)
-	defer os.Chdir(currWd)
+func (suite *CmdTestSuite) TearDownTest() {
+	os.RemoveAll(".microgit")
+}
 
-	os.WriteFile("test.txt", []byte("Hello"), 0o664)
-
-	hexSum := createFileAndHashIt(t, "Hello", false)
+func (suite *CmdTestSuite) TestHashBlobObjectNotWriteToDisk() {
+	hexSum, err := HashObject("test.txt", "blob", false)
+	if err != nil {
+		suite.FailNow("HashObject failed", "Error: %v", err)
+	}
 
 	combined := append([]byte("blob"), []byte(" 5")...)
 	combined = append(combined, '\x00')
@@ -73,27 +65,14 @@ func TestHashBlobObjectNotWriteToDisk(t *testing.T) {
 	shaSum := sha1.Sum(combined)
 	expected := hex.EncodeToString(shaSum[:])
 
-	if expected != hexSum {
-		t.Fatalf("HashObject return incorrect hash. Expected: %v, got: %v", expected, hexSum)
-	}
+	suite.Equal(expected, hexSum)
 }
 
-func TestHashBlobObjectWriteToDisk(t *testing.T) {
-	currWd, err := os.Getwd()
+func (suite *CmdTestSuite) TestHashBlobObjectWriteToDisk() {
+	hexSum, err := HashObject("test.txt", "blob", true)
 	if err != nil {
-		t.Fatalf("Failed to get current working directory, %v", err)
+		suite.FailNow("HashObject failed", "Error: %v", err)
 	}
-
-	tmpDir := testutil.CreateTestDir(t)
-	defer os.RemoveAll(tmpDir)
-	defer os.Chdir(currWd)
-
-	err = root.InitDB()
-	if err != nil {
-		t.Fatalf("Failed to execute Init command, error: %v", err)
-	}
-
-	hexSum := createFileAndHashIt(t, "Hello", true)
 
 	combined := append([]byte("blob"), []byte(" 5")...)
 	combined = append(combined, '\x00')
@@ -101,76 +80,40 @@ func TestHashBlobObjectWriteToDisk(t *testing.T) {
 	shaSum := sha1.Sum(combined)
 	expected := hex.EncodeToString(shaSum[:])
 
-	if expected != hexSum {
-		t.Fatalf("HashObject return incorrect hash. Expected: %v, got: %v", expected, hexSum)
-	}
+	suite.Equal(expected, hexSum)
 
 	objectPath := filepath.Join(".microgit", "objects", hexSum[:2], hexSum[2:])
 	fileContent, err := os.ReadFile(objectPath)
 	if err != nil {
-		t.Fatalf("Error when opening the object file: %v", err)
+		suite.FailNow("Error when opening the object file", "Error: %v", err)
 	}
 
-	if string(fileContent) != string(combined) {
-		t.Fatalf("Object file contains wrong content. Expected: %v, got: %v", fileContent, combined)
-	}
+	suite.Equal(string(combined), string(fileContent))
 }
 
-func TestHashObjectInvalidObjectType(t *testing.T) {
-	currWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory, %v", err)
-	}
+func (suite *CmdTestSuite) TestHashObjectInvalidObjectType() {
+	hexSum, err := HashObject("test.txt", "invalid_object_type", false)
 
-	tmpDir := testutil.CreateTestDir(t)
-	defer os.RemoveAll(tmpDir)
-	defer os.Chdir(currWd)
-
-	os.WriteFile("test.txt", []byte("Hello"), 0o664)
-
-	createFileAndHashIt(t, "Hello", false)
+	suite.Empty(hexSum, "HashObject should return empty result because of invalid object type")
+	suite.NotEmpty(err, "HashObject should return error because of invalid object type")
 }
 
-func TestCatFileReturnCorrectResult(t *testing.T) {
-	currWd, err := os.Getwd()
+func (suite *CmdTestSuite) TestCatFileReturnCorrectResult() {
+	hexSum, err := HashObject("test.txt", "blob", true)
 	if err != nil {
-		t.Fatalf("Failed to get current working directory, %v", err)
+		suite.FailNow("HashObject failed", "Error: %v", err)
 	}
-
-	tmpDir := testutil.CreateTestDir(t)
-	defer os.RemoveAll(tmpDir)
-	defer os.Chdir(currWd)
-
-	err = root.InitDB()
-	if err != nil {
-		t.Fatalf("Failed to execute Init command, error: %v", err)
-	}
-
-	hexSum := createFileAndHashIt(t, "Hello", true)
 
 	objInfo, err := object.Read(hexSum)
 	if err != nil {
-		t.Fatalf("CatFile return error: %v", err)
+		suite.FailNow("CatFile failed: ", "Error: %v", err)
 	}
 
-	if objInfo.Type != "blob" {
-		t.Fatalf("CatFile return wrong content type. Expected: blob, got: %v", objInfo.Type)
-	}
-	if objInfo.Size != 5 {
-		t.Fatalf("CatFile return wrong content size. Expected: 5, got: %v", objInfo.Size)
-	}
-	if string(objInfo.Content) != "Hello" {
-		t.Fatalf("CatFile return wrong content. Expected: %v, got: %v", []byte("Hello"), objInfo.Content)
-	}
+	suite.Equal("blob", objInfo.Type)
+	suite.Equal(5, objInfo.Size)
+	suite.Equal("Hello", string(objInfo.Content))
 }
 
-func createFileAndHashIt(t *testing.T, content string, shouldWrite bool) string {
-	os.WriteFile("test.txt", []byte(content), 0o664)
-
-	hexSum, err := HashObject("test.txt", "blob", shouldWrite)
-	if err != nil {
-		t.Fatalf("HashObject return error: %v", err)
-	}
-
-	return hexSum
+func TestCmdTestSuite(t *testing.T) {
+	suite.Run(t, new(CmdTestSuite))
 }

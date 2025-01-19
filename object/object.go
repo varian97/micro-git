@@ -180,8 +180,6 @@ func ReadTree(oid string) error {
 		isDir := treeEntry.objectType == TREE_OBJECT_TYPE
 		entryOid := treeEntry.oid
 
-		fmt.Printf("%v %v %v", filenamePath, isDir, entryOid)
-
 		if isDir {
 			err := os.MkdirAll(filenamePath, 0o777)
 			if err != nil {
@@ -199,15 +197,13 @@ func ReadTree(oid string) error {
 
 			err = os.MkdirAll(path, 0o777)
 			if err != nil {
-				fmt.Println(err)
-				fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
+				fmt.Printf("file %v failed to write to directory, %v, skipping...\n", err, filenamePath)
 				continue
 			}
 
 			err = os.WriteFile(filenamePath, objectInfo.Content, 0o664)
 			if err != nil {
-				fmt.Println(err)
-				fmt.Printf("file %v failed to write to directory, skipping...\n", filenamePath)
+				fmt.Printf("file %v failed to write to directory, %v, skipping...\n", err, filenamePath)
 				continue
 			}
 
@@ -266,10 +262,6 @@ func Commit(msg string) (string, error) {
 	return commitOid, nil
 }
 
-/*
-put all the tree entries (oid and filename) into a map for further processing.
-filenamePathByOid already contains filename that joined by path to make it easier processing the file.
-*/
 func recursivelyReadTree(oid, prefix string, treeEntries *[]treeEntry) error {
 	objectInfo, err := Read(oid)
 	if err != nil {

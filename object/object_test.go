@@ -112,7 +112,7 @@ func (suite *TreeAndCommitTestSuite) TestWriteTree() {
 
 	objectInfo, err := Read(oid)
 	if err != nil {
-		suite.FailNow("Canno read the tree file", "Error: %v", err)
+		suite.FailNow("Cannot read the tree file", "Error: %v", err)
 	}
 
 	infoByFilename := make(map[string]struct {
@@ -247,6 +247,29 @@ func (suite *TreeAndCommitTestSuite) TestReadTree() {
 		suite.FailNow("Failed to read test2.txt file", "Error: %v", err)
 	}
 	suite.Equal("Hello World", string(fileContent))
+}
+
+func (suite *TreeAndCommitTestSuite) TestCommit() {
+	oidFromWriteTree, err := WriteTree(".")
+	if err != nil {
+		suite.FailNow("Failed to execute WriteTree", "Error: %v", err)
+	}
+
+	oid, err := Commit("commit message")
+	if err != nil {
+		suite.FailNow("Failed to execute WriteTree", "Error: %v", err)
+	}
+
+	objectInfo, err := Read(oid)
+	if err != nil {
+		suite.FailNow("Cannot read the commit file", "Error: %v", err)
+	}
+
+	commitFileContent := string(objectInfo.Content)
+	commitFileLines := strings.Split(commitFileContent, "\n")
+
+	suite.Equal("commit message", commitFileLines[3])
+	suite.Equal(oidFromWriteTree, strings.Split(commitFileLines[0], " ")[1])
 }
 
 func TestTreeAndCommitTestSuite(t *testing.T) {

@@ -268,7 +268,7 @@ func (suite *TreeAndCommitTestSuite) TestCommit() {
 	commitFileContent := string(objectInfo.Content)
 	commitFileLines := strings.Split(commitFileContent, "\n")
 
-	suite.Equal("commit message", commitFileLines[3])
+	suite.Equal("commit message", commitFileLines[4])
 	suite.Equal(oidFromWriteTree, strings.Split(commitFileLines[0], " ")[1])
 }
 

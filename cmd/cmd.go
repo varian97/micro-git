@@ -63,6 +63,8 @@ func main() {
 		Required: true,
 	})
 
+	logCommand := parser.NewCommand("log", "Shows the commit logs.")
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
@@ -119,6 +121,14 @@ func main() {
 			return
 		}
 		fmt.Println(commitOid)
+	}
+
+	if logCommand.Happened() {
+		err := object.PrintCommitLogs()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 }
 

@@ -1,16 +1,15 @@
-package commit
+package cmd
 
 import (
 	"fmt"
 
-	"micro-git/cmd"
 	"micro-git/object"
 
 	"github.com/akamensky/argparse"
 )
 
 type CommitCommand struct {
-	cmd.CommandMeta
+	CommandMeta
 	commitMessage *string
 }
 

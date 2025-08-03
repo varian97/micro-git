@@ -228,8 +228,6 @@ func ReadTree(oid string) error {
 				fmt.Printf("file %v failed to write to directory, %v, skipping...\n", err, filenamePath)
 				continue
 			}
-
-			fmt.Println(filenamePath)
 		}
 	}
 

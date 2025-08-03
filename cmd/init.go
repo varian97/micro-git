@@ -1,16 +1,15 @@
-package init
+package cmd
 
 import (
 	"fmt"
 
-	"micro-git/cmd"
 	"micro-git/root"
 
 	"github.com/akamensky/argparse"
 )
 
 type InitCommand struct {
-	cmd.CommandMeta
+	CommandMeta
 }
 
 func (c *InitCommand) Register(p *argparse.Parser) {

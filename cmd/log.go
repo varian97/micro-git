@@ -1,16 +1,15 @@
-package commit
+package cmd
 
 import (
 	"fmt"
 
-	"micro-git/cmd"
 	"micro-git/object"
 
 	"github.com/akamensky/argparse"
 )
 
 type LogCommand struct {
-	cmd.CommandMeta
+	CommandMeta
 }
 
 func (c *LogCommand) Register(p *argparse.Parser) {

@@ -5,11 +5,6 @@ import (
 	"os"
 
 	"micro-git/cmd"
-	"micro-git/cmd/blob"
-	"micro-git/cmd/cat"
-	"micro-git/cmd/commit"
-	init_ "micro-git/cmd/init"
-	"micro-git/cmd/tree"
 
 	"github.com/akamensky/argparse"
 )
@@ -40,15 +35,15 @@ func main() {
 	parser := argparse.NewParser("mgit", "These are common microgit commands used in various situations.")
 
 	// porcelain commands
-	initCommand := &init_.InitCommand{}
-	commitCommand := &commit.CommitCommand{}
-	logCommand := &commit.LogCommand{}
+	initCommand := &cmd.InitCommand{}
+	commitCommand := &cmd.CommitCommand{}
+	logCommand := &cmd.LogCommand{}
 
 	// plumbing commands
-	hashObjectCommand := &blob.HashObjectCommand{}
-	catCommand := &cat.CatCommand{}
-	writeTreeCommand := &tree.WriteTreeCommand{}
-	readTreeCommand := &tree.ReadTreeCommand{}
+	hashObjectCommand := &cmd.HashObjectCommand{}
+	catCommand := &cmd.CatCommand{}
+	writeTreeCommand := &cmd.WriteTreeCommand{}
+	readTreeCommand := &cmd.ReadTreeCommand{}
 
 	// Registration
 	initCommand.Register(parser)

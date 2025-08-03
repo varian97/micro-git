@@ -1,17 +1,16 @@
-package cat
+package cmd
 
 import (
 	"fmt"
 	"strconv"
 
-	"micro-git/cmd"
 	"micro-git/object"
 
 	"github.com/akamensky/argparse"
 )
 
 type CatCommand struct {
-	cmd.CommandMeta
+	CommandMeta
 	fileInput            *string
 	shouldShowObjectType *bool
 	shouldShowSize       *bool

@@ -1,16 +1,15 @@
-package tree
+package cmd
 
 import (
 	"fmt"
 
-	"micro-git/cmd"
 	"micro-git/object"
 
 	"github.com/akamensky/argparse"
 )
 
 type WriteTreeCommand struct {
-	cmd.CommandMeta
+	CommandMeta
 	subdir *string
 }
 

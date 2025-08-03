@@ -1,17 +1,16 @@
-package blob
+package cmd
 
 import (
 	"fmt"
 	"os"
 
-	"micro-git/cmd"
 	"micro-git/object"
 
 	"github.com/akamensky/argparse"
 )
 
 type HashObjectCommand struct {
-	cmd.CommandMeta
+	CommandMeta
 	fileInput   *string
 	objectType  *string
 	shouldWrite *bool

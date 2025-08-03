@@ -7,20 +7,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"micro-git/object"
 	"micro-git/root"
 	"micro-git/testutil"
 
 	"github.com/stretchr/testify/suite"
 )
 
-type CmdTestSuite struct {
+type HashObjectTestSuite struct {
 	suite.Suite
 	currWd string
 	tmpDir string
 }
 
-func (suite *CmdTestSuite) SetupSuite() {
+func (suite *HashObjectTestSuite) SetupSuite() {
 	currWd, err := os.Getwd()
 	if err != nil {
 		suite.FailNow("Failed to get current working directory", "Error: %v", err)
@@ -37,24 +36,24 @@ func (suite *CmdTestSuite) SetupSuite() {
 	}
 }
 
-func (suite *CmdTestSuite) TearDownSuite() {
+func (suite *HashObjectTestSuite) TearDownSuite() {
 	os.RemoveAll(suite.tmpDir)
 	os.Chdir(suite.currWd)
 }
 
-func (suite *CmdTestSuite) SetupTest() {
+func (suite *HashObjectTestSuite) SetupTest() {
 	err := root.InitDB()
 	if err != nil {
 		suite.FailNow("Failed to execute Init command", "Error: %v", err)
 	}
 }
 
-func (suite *CmdTestSuite) TearDownTest() {
+func (suite *HashObjectTestSuite) TearDownTest() {
 	os.RemoveAll(".microgit")
 }
 
-func (suite *CmdTestSuite) TestHashBlobObjectNotWriteToDisk() {
-	hexSum, err := HashObject("test.txt", "blob", false)
+func (suite *HashObjectTestSuite) TestHashBlobObjectNotWriteToDisk() {
+	hexSum, err := hashObject("test.txt", "blob", false)
 	if err != nil {
 		suite.FailNow("HashObject failed", "Error: %v", err)
 	}
@@ -68,8 +67,8 @@ func (suite *CmdTestSuite) TestHashBlobObjectNotWriteToDisk() {
 	suite.Equal(expected, hexSum)
 }
 
-func (suite *CmdTestSuite) TestHashBlobObjectWriteToDisk() {
-	hexSum, err := HashObject("test.txt", "blob", true)
+func (suite *HashObjectTestSuite) TestHashBlobObjectWriteToDisk() {
+	hexSum, err := hashObject("test.txt", "blob", true)
 	if err != nil {
 		suite.FailNow("HashObject failed", "Error: %v", err)
 	}
@@ -91,29 +90,13 @@ func (suite *CmdTestSuite) TestHashBlobObjectWriteToDisk() {
 	suite.Equal(string(combined), string(fileContent))
 }
 
-func (suite *CmdTestSuite) TestHashObjectInvalidObjectType() {
-	hexSum, err := HashObject("test.txt", "invalid_object_type", false)
+func (suite *HashObjectTestSuite) TestHashObjectInvalidObjectType() {
+	hexSum, err := hashObject("test.txt", "invalid_object_type", false)
 
 	suite.Empty(hexSum, "HashObject should return empty result because of invalid object type")
 	suite.NotEmpty(err, "HashObject should return error because of invalid object type")
 }
 
-func (suite *CmdTestSuite) TestCatFileReturnCorrectResult() {
-	hexSum, err := HashObject("test.txt", "blob", true)
-	if err != nil {
-		suite.FailNow("HashObject failed", "Error: %v", err)
-	}
-
-	objInfo, err := object.Read(hexSum)
-	if err != nil {
-		suite.FailNow("CatFile failed: ", "Error: %v", err)
-	}
-
-	suite.Equal("blob", objInfo.Type)
-	suite.Equal(5, objInfo.Size)
-	suite.Equal("Hello", string(objInfo.Content))
-}
-
-func TestCmdTestSuite(t *testing.T) {
-	suite.Run(t, new(CmdTestSuite))
+func TestHashObjectTestSuite(t *testing.T) {
+	suite.Run(t, new(HashObjectTestSuite))
 }

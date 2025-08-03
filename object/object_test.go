@@ -38,13 +38,13 @@ func TestGenInfo(t *testing.T) {
 	assert.Equal(t, oid, objectInfo.Oid)
 }
 
-type TreeAndCommitTestSuite struct {
+type TreeIOTestSuite struct {
 	suite.Suite
 	currWd string
 	tmpDir string
 }
 
-func (suite *TreeAndCommitTestSuite) SetupSuite() {
+func (suite *TreeIOTestSuite) SetupSuite() {
 	currWd, err := os.Getwd()
 	if err != nil {
 		suite.FailNow("Failed to get current working directory", "Error: %v", err)
@@ -56,12 +56,12 @@ func (suite *TreeAndCommitTestSuite) SetupSuite() {
 	suite.tmpDir = tmpDir
 }
 
-func (suite *TreeAndCommitTestSuite) TearDownSuite() {
+func (suite *TreeIOTestSuite) TearDownSuite() {
 	os.RemoveAll(suite.tmpDir)
 	os.Chdir(suite.currWd)
 }
 
-func (suite *TreeAndCommitTestSuite) SetupTest() {
+func (suite *TreeIOTestSuite) SetupTest() {
 	err := root.InitDB()
 	if err != nil {
 		suite.FailNow("Failed to execute Init command", "Error: %v", err)
@@ -97,14 +97,14 @@ func (suite *TreeAndCommitTestSuite) SetupTest() {
 	}
 }
 
-func (suite *TreeAndCommitTestSuite) TearDownTest() {
+func (suite *TreeIOTestSuite) TearDownTest() {
 	os.RemoveAll(".microgit")
 	os.RemoveAll("src")
 	os.RemoveAll("empty")
 	os.Remove("test.txt")
 }
 
-func (suite *TreeAndCommitTestSuite) TestWriteTree() {
+func (suite *TreeIOTestSuite) TestWriteTree() {
 	oid, err := WriteTree(".")
 	if err != nil {
 		suite.FailNow("Failed to execute WriteTree", "Error: %v", err)
@@ -185,7 +185,7 @@ func (suite *TreeAndCommitTestSuite) TestWriteTree() {
 	suite.Equal("tree", info.objectType)
 }
 
-func (suite *TreeAndCommitTestSuite) TestReadTree() {
+func (suite *TreeIOTestSuite) TestReadTree() {
 	oid, err := WriteTree(".")
 	if err != nil {
 		suite.FailNow("Failed to execute WriteTree", "Error: %v", err)
@@ -249,29 +249,6 @@ func (suite *TreeAndCommitTestSuite) TestReadTree() {
 	suite.Equal("Hello World", string(fileContent))
 }
 
-func (suite *TreeAndCommitTestSuite) TestCommit() {
-	oidFromWriteTree, err := WriteTree(".")
-	if err != nil {
-		suite.FailNow("Failed to execute WriteTree", "Error: %v", err)
-	}
-
-	oid, err := Commit("commit message")
-	if err != nil {
-		suite.FailNow("Failed to execute WriteTree", "Error: %v", err)
-	}
-
-	objectInfo, err := Read(oid)
-	if err != nil {
-		suite.FailNow("Cannot read the commit file", "Error: %v", err)
-	}
-
-	commitFileContent := string(objectInfo.Content)
-	commitFileLines := strings.Split(commitFileContent, "\n")
-
-	suite.Equal("commit message", commitFileLines[4])
-	suite.Equal(oidFromWriteTree, strings.Split(commitFileLines[0], " ")[1])
-}
-
-func TestTreeAndCommitTestSuite(t *testing.T) {
-	suite.Run(t, new(TreeAndCommitTestSuite))
+func TestTreeIOTestSuite(t *testing.T) {
+	suite.Run(t, new(TreeIOTestSuite))
 }

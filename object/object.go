@@ -6,13 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
-	"micro-git/refs"
 	"micro-git/root"
 )
 
@@ -35,14 +32,6 @@ type treeEntry struct {
 	objectType string
 	oid        string
 	filename   string
-}
-
-type commitInfo struct {
-	treeOid         string
-	parentCommitOid string
-	author          string
-	time            int64
-	message         string
 }
 
 func GenInfo(objectType string, fileContent []byte) (*ObjectInfo, error) {
@@ -234,94 +223,6 @@ func ReadTree(oid string) error {
 	return nil
 }
 
-func Commit(msg string) (string, error) {
-	treeOid, err := WriteTree(".")
-	if err != nil {
-		return "", err
-	}
-
-	fileContent := []byte(fmt.Sprintf("%v %v\n", TREE_OBJECT_TYPE, treeOid))
-
-	// parent commit
-	// @todo: commit the same working directory will cause parent to point to the same commit
-	// How to check no changes since last commit?
-	headRef, err := refs.GetCurrentHead()
-	if err != nil {
-		return "", fmt.Errorf("failed to read HEAD file, %v", err)
-	}
-
-	prevCommitOid, err := refs.GetRefContent(headRef)
-	if err != nil {
-		return "", fmt.Errorf("failed to read ref file, %v", err)
-	}
-	fileContent = append(fileContent, []byte(fmt.Sprintf("parent %v\n", prevCommitOid))...)
-
-	// author
-	usr, err := user.Current()
-	var username string
-	if err == nil {
-		username = usr.Username
-	} else {
-		username = "<anonymous>"
-	}
-	fileContent = append(fileContent, []byte(fmt.Sprintf("author %v %v\n\n", username, time.Now().Unix()))...)
-
-	// commit message
-	fileContent = append(fileContent, []byte(msg)...)
-
-	commitOid, err := Write(COMMIT_OBJECT_TYPE, fileContent)
-	if err != nil {
-		return "", err
-	}
-
-	// @todo: How to handle if error happened here?
-	refs.SetRefContent(headRef, commitOid)
-
-	return commitOid, nil
-}
-
-func PrintCommitLogs() error {
-	headRef, err := refs.GetCurrentHead()
-	if err != nil {
-		return fmt.Errorf("failed to read HEAD file, %v", err)
-	}
-
-	commitOid, err := refs.GetRefContent(headRef)
-	if err != nil {
-		return fmt.Errorf("failed to read ref file, %v", err)
-	}
-	if commitOid == "" {
-		return fmt.Errorf("fatal: Your branch does not have any commits yet")
-	}
-
-	commitInfo, err := parseCommitContent(commitOid)
-	if err != nil {
-		return err
-	}
-
-	/*
-		commit: <oid>
-		Author: author
-		Date: <date>
-
-		    commit message
-	*/
-
-	t := time.Unix(commitInfo.time, 0)
-	fmt.Printf("commit: %v\nAuthor: %v\nDate: %v\n\n\t%v\n\n", commitOid, commitInfo.author, t.String(), commitInfo.message)
-
-	for curr := commitInfo; curr.parentCommitOid != ""; {
-		curr, err = parseCommitContent(curr.parentCommitOid)
-		if err != nil {
-			return err
-		}
-		t := time.Unix(commitInfo.time, 0)
-		fmt.Printf("commit: %v\nAuthor: %v\nDate: %v\n\n\t%v\n\n", commitOid, curr.author, t.String(), curr.message)
-	}
-
-	return nil
-}
-
 func recursivelyReadTree(oid, prefix string, treeEntries *[]treeEntry) error {
 	objectInfo, err := Read(oid)
 	if err != nil {
@@ -361,32 +262,4 @@ func recursivelyReadTree(oid, prefix string, treeEntries *[]treeEntry) error {
 	}
 
 	return nil
-}
-
-func parseCommitContent(commitOid string) (*commitInfo, error) {
-	objInfo, err := Read(commitOid)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read commit file, %v", err)
-	}
-	commitContents := strings.Split(string(objInfo.Content), "\n\n")
-	message := commitContents[1]
-
-	infos := strings.Split(commitContents[0], "\n")
-	treeOid := strings.Split(infos[0], " ")[1]
-	parent := strings.Split(infos[1], " ")[1]
-
-	authorAndTime := strings.Split(infos[2], " ")
-	author := authorAndTime[1]
-	timestampInt64, err := strconv.ParseInt(authorAndTime[2], 10, 64)
-	if err != nil {
-		timestampInt64 = 0
-	}
-
-	return &commitInfo{
-		treeOid:         treeOid,
-		parentCommitOid: parent,
-		author:          author,
-		time:            timestampInt64,
-		message:         message,
-	}, nil
 }

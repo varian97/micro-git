@@ -71,12 +71,19 @@ func printCommitLogs() error {
 	fmt.Printf("commit: %v\nAuthor: %v\nDate: %v\n\n\t%v\n\n", commitOid, commitInfo.author, t.String(), commitInfo.message)
 
 	for curr := commitInfo; curr.parentCommitOid != ""; {
-		curr, err = parseCommitContent(curr.parentCommitOid)
+		parentCommitInfo, err := parseCommitContent(curr.parentCommitOid)
 		if err != nil {
 			return err
 		}
-		t := time.Unix(commitInfo.time, 0)
-		fmt.Printf("commit: %v\nAuthor: %v\nDate: %v\n\n\t%v\n\n", commitOid, curr.author, t.String(), curr.message)
+		t := time.Unix(parentCommitInfo.time, 0)
+		fmt.Printf(
+			"commit: %v\nAuthor: %v\nDate: %v\n\n\t%v\n\n",
+			curr.parentCommitOid,
+			parentCommitInfo.author,
+			t.String(),
+			parentCommitInfo.message,
+		)
+		curr = parentCommitInfo
 	}
 
 	return nil
